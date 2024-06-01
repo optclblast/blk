@@ -140,13 +140,21 @@ func (t *ethInteractor) appendAddressDeltaWorker(
 
 // Returns an address of a wallet with balances mod|delta| is the highest
 func biggestDeltaAddres(set map[string]*big.Int) string {
+	if len(set) == 0 {
+		return ""
+	}
+
+	i := 0
+
 	// Build wallets array
-	wallets := make(entities.Wallets, 0, len(set))
+	wallets := make(entities.Wallets, len(set))
 	for addr, dlt := range set {
-		wallets = append(wallets, &entities.Wallet{
+		wallets[i] = entities.Wallet{
 			Address: addr,
 			Delta:   dlt.Abs(dlt),
-		})
+		}
+
+		i++
 	}
 
 	// Sort

@@ -20,7 +20,8 @@ make up
 *min go version go1.22.3*
 
 ```bash
-make run.local
+make bin.build
+BLK_GETBLOCK_ACCESS_TOKEN=TOKEN BLK_LOG_LEVEL=info BLK_HTTP_ADDR=0.0.0.0:8085 $(pwd)/build/blk
 ```
 
 ## API

@@ -4,15 +4,79 @@ import (
 	"context"
 	"log/slog"
 	"math/big"
+	"math/rand"
+	"slices"
 	"testing"
 
 	"github.com/optclblast/blk/internal/entities"
 )
 
+func TestAddressWithBiggestDelta(t *testing.T) {
+	ethInteractor := &ethInteractor{log: slog.Default()}
+
+	for _, tc := range testBlocks {
+		t.Run(tc.Title, func(t *testing.T) {
+			txCh := make(chan *entities.Transaction, len(tc.Block.Transactions))
+
+			for _, txs := range tc.Block.Transactions {
+				txCh <- txs
+			}
+
+			close(txCh)
+
+			walletAddr, err := ethInteractor.addressWithBiggestDelta(context.TODO(), txCh)
+			if err != nil {
+				t.Fatalf("error: %s\n", err.Error())
+			}
+
+			if !slices.Contains(tc.ExpectedResult, walletAddr) {
+				t.Fatalf("invalid result: %s | Expected: %v", walletAddr, tc.ExpectedResult)
+			}
+		})
+	}
+}
+
+func BenchmarkAddressWithBiggestDelta(b *testing.B) {
+	ethInteractor := &ethInteractor{log: slog.Default()}
+
+	txs := make([]*entities.Transaction, 20000)
+
+	for i := 0; i < 20000; i++ {
+		txs[i] = &entities.Transaction{
+			Value: big.NewInt(rand.Int63()),
+			From:  RandStringRunes(rand.Intn(1000)),
+			To:    RandStringRunes(rand.Intn(1000)),
+		}
+	}
+
+	txCh := make(chan *entities.Transaction, len(txs))
+
+	for _, txs := range txs {
+		txCh <- txs
+	}
+
+	close(txCh)
+
+	_, err := ethInteractor.addressWithBiggestDelta(context.TODO(), txCh)
+	if err != nil {
+		b.Fatalf("error: %s\n", err.Error())
+	}
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
+
 type TestCase struct {
 	Title          string
 	Block          *entities.Block
-	ExpectedResult string
+	ExpectedResult []string
 }
 
 var testBlocks []TestCase = []TestCase{
@@ -37,10 +101,10 @@ var testBlocks []TestCase = []TestCase{
 				},
 			},
 		},
-		ExpectedResult: "A",
+		ExpectedResult: []string{"A"},
 	},
 	{
-		Title: "2 block, 3 wallets, 4 txs. Positive is the highest",
+		Title: "1 block, 3 wallets, 4 txs. Positive is the highest",
 		Block: &entities.Block{
 			Transactions: []*entities.Transaction{
 				{
@@ -60,36 +124,74 @@ var testBlocks []TestCase = []TestCase{
 				},
 				{
 					From:  "A",
-					To:    "B", // +10
+					To:    "B", // +15
 					Value: big.NewInt(15),
 				},
 			},
 		},
-		ExpectedResult: "B",
+		ExpectedResult: []string{"B"},
 	},
-}
-
-func TestAddressWithBiggestDelta(t *testing.T) {
-	ethInteractor := &ethInteractor{log: slog.Default()}
-
-	for _, tc := range testBlocks {
-		t.Run(tc.Title, func(t *testing.T) {
-			txCh := make(chan *entities.Transaction, len(tc.Block.Transactions))
-
-			for _, txs := range tc.Block.Transactions {
-				txCh <- txs
-			}
-
-			close(txCh)
-
-			walletAddr, err := ethInteractor.addressWithBiggestDelta(context.TODO(), txCh)
-			if err != nil {
-				t.Fatalf("error: %s\n", err.Error())
-			}
-
-			if walletAddr != tc.ExpectedResult {
-				t.Fatalf("invalid result: %s | Expected: %s", walletAddr, tc.ExpectedResult)
-			}
-		})
-	}
+	{
+		Title: "1 block, 0 wallets, 0 txs",
+		Block: &entities.Block{
+			Transactions: []*entities.Transaction{},
+		},
+		ExpectedResult: []string{""},
+	},
+	{
+		Title: "1 block, 3 wallets, 3 txs. Txs are negative",
+		Block: &entities.Block{
+			Transactions: []*entities.Transaction{
+				{
+					From:  "A",
+					To:    "B",
+					Value: big.NewInt(-10),
+				},
+				{
+					From:  "A",
+					To:    "B",
+					Value: big.NewInt(-1000),
+				},
+				{
+					From:  "F",
+					To:    "A",
+					Value: big.NewInt(-1000),
+				},
+				{
+					From:  "A",
+					To:    "B",
+					Value: big.NewInt(-15),
+				},
+			},
+		},
+		ExpectedResult: []string{"B"},
+	},
+	{
+		Title: "1 block, 2 wallets, 3 txs. Both are equal",
+		Block: &entities.Block{
+			Transactions: []*entities.Transaction{
+				{
+					From:  "A",
+					To:    "B",
+					Value: big.NewInt(-10),
+				},
+				{
+					From:  "A",
+					To:    "B",
+					Value: big.NewInt(50),
+				},
+				{
+					From:  "B",
+					To:    "A",
+					Value: big.NewInt(10),
+				},
+				{
+					From:  "A",
+					To:    "B",
+					Value: big.NewInt(-15),
+				},
+			},
+		},
+		ExpectedResult: []string{"B", "A"},
+	},
 }
