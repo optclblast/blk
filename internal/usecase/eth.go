@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"runtime"
+	"sync"
 
-	"github.com/optclblast/blk/internal/backoff"
+	"github.com/alitto/pond"
 	"github.com/optclblast/blk/internal/entities"
 	"github.com/optclblast/blk/internal/logger"
-	"golang.org/x/sync/errgroup"
 )
 
 type EthInteractor interface {
@@ -121,7 +122,6 @@ func (t *ethInteractor) fetchWallets(
 	return wallets, nil
 }
 
-// fetchBlocksTransactions fetches transactions from blocks and sends them into txChan
 func (t *ethInteractor) fetchBlocksTransactions(
 	ctx context.Context,
 	headBlock *big.Int,
@@ -131,35 +131,35 @@ func (t *ethInteractor) fetchBlocksTransactions(
 	blockToFetch := new(big.Int).Set(headBlock)
 	endBlock := big.NewInt(0)
 
-	eg, ctx := errgroup.WithContext(ctx)
+	processPool := pond.New(runtime.GOMAXPROCS(0)*2, numBlocks)
+	fetchPool := pond.New(2, numBlocks)
+
+	blocksChan := make(chan *entities.Block, numBlocks/2)
+
+	var fetchWg sync.WaitGroup
 
 	for i := 0; i < numBlocks; i++ {
-		eg.Go(func() error {
-			blockNumber := entities.BlockNumber("0x" + blockToFetch.Text(16))
+		blockNumber := entities.BlockNumber("0x" + blockToFetch.Text(16))
 
-			var (
-				err   error
-				block *entities.Block
+		fetchWg.Add(1)
+		fetchPool.Submit(func() {
+			defer fetchWg.Done()
+
+			block, err := t.client.BlockInfoByNumber(
+				ctx,
+				blockNumber,
 			)
-
-			fn := func() error {
-				block, err = t.client.BlockInfoByNumber(
-					ctx,
-					blockNumber,
+			if err != nil {
+				t.log.Error(
+					"error fetch block info",
+					logger.Err(err),
+					slog.Any("block number", blockNumber),
 				)
 
-				return err
+				return
 			}
 
-			if err = backoff.WithRetry(3, fn, backoff.RateLimiterDecider()); err != nil {
-				return fmt.Errorf("error fetch block info. %w", err)
-			}
-
-			for _, tx := range block.Transactions {
-				txChan <- tx
-			}
-
-			return nil
+			blocksChan <- block
 		})
 
 		blockToFetch.Sub(blockToFetch, big.NewInt(1))
@@ -170,16 +170,26 @@ func (t *ethInteractor) fetchBlocksTransactions(
 	}
 
 	go func() {
-		defer func() {
-			close(txChan)
-		}()
-
-		if err := eg.Wait(); err != nil {
-			t.log.Error(
-				"error fetch blocks info",
-				logger.Err(err),
-			)
-		}
+		fetchWg.Wait()
+		close(blocksChan)
 	}()
 
+	var processWg sync.WaitGroup
+
+	for b := range blocksChan {
+		processWg.Add(1)
+
+		processPool.Submit(func() {
+			defer processWg.Done()
+
+			for _, tx := range b.Transactions {
+				txChan <- tx
+			}
+		})
+	}
+
+	go func() {
+		processWg.Wait()
+		close(txChan)
+	}()
 }
