@@ -61,7 +61,7 @@ var testBlocks []TestCase = []TestCase{
 				{
 					From:  "A",
 					To:    "B", // +10
-					Value: big.NewInt(10),
+					Value: big.NewInt(15),
 				},
 			},
 		},
@@ -69,7 +69,7 @@ var testBlocks []TestCase = []TestCase{
 	},
 }
 
-func TestMostChangedAddress(t *testing.T) {
+func TestAddressWithBiggestDelta(t *testing.T) {
 	ethInteractor := &ethInteractor{log: slog.Default()}
 
 	for _, tc := range testBlocks {

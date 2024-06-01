@@ -18,7 +18,7 @@ type WalletsController interface {
 
 const (
 	defaultNumBlocks = 100
-	maxNumBlocks     = 250
+	maxNumBlocks     = 150
 )
 
 func (c *walletsController) MostChangedWalletAddress(w http.ResponseWriter, r *http.Request) (any, error) {

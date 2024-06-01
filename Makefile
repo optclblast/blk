@@ -18,3 +18,7 @@ run.local: bin.build
 .PHONY: start.d
 start.d:
 	sudo systemctl start docker
+
+test:
+	sudo docker compose -f docker-compose.test.yaml up --build --abort-on-container-exit
+	sudo docker compose -f docker-compose.test.yaml down --volumes

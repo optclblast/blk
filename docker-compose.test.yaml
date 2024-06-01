@@ -1,0 +1,8 @@
+services:
+  blk:
+    container_name: blk-test
+    build:
+      context: .
+      dockerfile: ./Dockerfile.test
+    env_file:
+      - .env

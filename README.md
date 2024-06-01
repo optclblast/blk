@@ -2,6 +2,7 @@
 ETH wallets balance delta fetcher  
 
 ## Build 
+### Docker
 1. Install docker 
 2. Create account at [getblock.io](https://www.getblock.io/) and get an access token. 
 3. In a root of the project, create *.env* file and fill it with the following:
@@ -15,21 +16,33 @@ BLK_HTTP_ADDR=0.0.0.0:8085                    ## Listen address
 ```bash
 make up
 ```
+### Locally 
+*min go version go1.22.3*
+
+```bash
+make run.local
+```
 
 ## API
 ### GET /most-changed?blocks=$1
 Request parameters: 
-* blocks - type: uint (optional). Limits amount of blocks chat will be checked from head. Default: 100
+* blocks - type: uint (optional). Limits amount of blocks chat will be checked from head.   
+        Default: 100, Max: 150
 
 Example:
 ```bash
 curl --request GET \
-  --url 'http://localhost:8085/most-changed'
+        --url 'http://localhost:8085/most-changed'
 ```
 
 Response:
 ```json
 {
-  "address": "0x3f0c3faeeeb9dad6ef6eb5fbab61039ff9067a07"
+        "address": "0x3f0c3faeeeb9dad6ef6eb5fbab61039ff9067a07",
 }
+```
+
+## Testing
+```bash
+make test
 ```
