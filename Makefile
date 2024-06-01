@@ -10,7 +10,7 @@ bin.build:
 
 .PHONY: up
 up: 
-	sudo docker compose up --build -d
+	sudo docker compose -f docker-compose.yaml up --build -d
 
 .PHONY: run.local
 run.local: bin.build
