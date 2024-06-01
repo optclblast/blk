@@ -43,6 +43,12 @@ Response:
 ```
 
 ## Testing
+### Run tests (docker)
 ```bash
 make test
+```
+### Lint
+```bash
+make get.tools
+make lint
 ```
