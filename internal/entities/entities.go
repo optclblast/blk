@@ -13,24 +13,6 @@ type Wallet struct {
 	Delta   *big.Int
 }
 
-type walletJSON struct {
-	Address string `json:"address"`
-	Delta   string `json:"delta"`
-}
-
-func (w *Wallet) MarshalJSON() ([]byte, error) {
-	deltaHex := w.Delta.Text(16)
-
-	if w.Delta.Sign() == -1 {
-		deltaHex = "-0x" + deltaHex[1:]
-	}
-
-	return json.Marshal(&walletJSON{
-		Address: w.Address,
-		Delta:   deltaHex,
-	})
-}
-
 type Wallets []*Wallet
 
 func (w Wallets) Sort() {

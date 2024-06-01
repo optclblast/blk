@@ -11,10 +11,11 @@ import (
 	"github.com/alitto/pond"
 	"github.com/optclblast/blk/internal/entities"
 	"github.com/optclblast/blk/internal/logger"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 type EthInteractor interface {
-	MostChangedAddress(ctx context.Context, numBlocks int) (*entities.Wallet, error)
+	MostChangedAddress(ctx context.Context, numBlocks int) (string, error)
 }
 
 type ethInteractor struct {
@@ -37,90 +38,82 @@ type MostChangedAddressResult struct {
 	Delta   *big.Int
 }
 
-func (t *ethInteractor) MostChangedAddress(ctx context.Context, numBlocks int) (*entities.Wallet, error) {
+func (t *ethInteractor) MostChangedAddress(ctx context.Context, numBlocks int) (string, error) {
 	// We need to fetch current head block
 	head, err := t.client.LastBlockNumber(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error fetch last block number. %w", err)
+		return "", fmt.Errorf("error fetch last block number. %w", err)
 	}
 
 	t.log.Debug(
-		"MostChangedAddress",
+		"most_changed_address",
 		slog.String("head block number", (string)(head)),
 		slog.Int("num blocks parameter", numBlocks),
 	)
 
-	lastBlockNumber, err := head.ToInt()
+	headBlockNumber, err := head.ToInt()
 	if err != nil {
-		return nil, fmt.Errorf("error map last block number to numeric. %w", err)
+		return "", fmt.Errorf("error map last block number to numeric. %w", err)
 	}
 
-	wallets, err := t.fetchWallets(ctx, lastBlockNumber, numBlocks)
-	if err != nil {
-		return nil, fmt.Errorf("error fetch wallets. %w", err)
-	}
-
-	t.log.Debug(
-		"MostChangedAddress",
-		slog.Int("num blocks parameter", numBlocks),
-		slog.Int("wallets fetched", len(wallets)),
-	)
-
-	if len(wallets) == 0 {
-		return nil, fmt.Errorf("error empty wallets set")
-	}
-
-	return wallets[0], nil
-}
-
-func (t *ethInteractor) fetchWallets(
-	ctx context.Context,
-	headBlock *big.Int,
-	numBlocks int,
-) ([]*entities.Wallet, error) {
 	txChan := make(chan *entities.Transaction, numBlocks)
 
-	t.fetchBlocksTransactions(ctx, headBlock, numBlocks, txChan)
+	t.fetchBlocksTransactions(ctx, headBlockNumber, numBlocks, txChan)
 
-	// map [Wallet address => Delta]
-	addresses := make(map[string]*big.Int, numBlocks)
-
-	// Fill the map with deltas
-	for t := range txChan {
-		delta, ok := addresses[t.From]
-		if !ok {
-			delta = new(big.Int)
-		}
-
-		addresses[t.From] = delta.Sub(delta, t.Value)
-
-		delta, ok = addresses[t.To]
-		if !ok {
-			delta = new(big.Int)
-		}
-
-		addresses[t.To] = delta.Add(delta, t.Value)
+	walletAddress, err := t.addressWithBiggestDelta(ctx, txChan)
+	if err != nil {
+		return "", fmt.Errorf("error fetch wallets. %w", err)
 	}
 
-	// Build wallets array
-	wallets := make(entities.Wallets, len(addresses))
-	{
-		i := 0
-		for addr, dlt := range addresses {
-			wallets[i] = &entities.Wallet{
-				Address: addr,
-				Delta:   dlt,
-			}
-
-			i++
-		}
-	}
-
-	// Sort
-	wallets.Sort()
-
-	return wallets, nil
+	return walletAddress, nil
 }
+
+var defaultWorkersNum = runtime.GOMAXPROCS(0) * 2
+
+func (t *ethInteractor) addressWithBiggestDelta(
+	ctx context.Context,
+	txChan chan *entities.Transaction,
+) (string, error) {
+	// map [Wallet address => Delta]
+	addresses := cmap.New[*big.Int]()
+
+	var wg sync.WaitGroup
+
+	// Fill the map with address / delta pairs
+	for i := 0; i < defaultWorkersNum; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for t := range txChan {
+				deltaFrom, ok := addresses.Get(t.From)
+				if !ok {
+					deltaFrom = new(big.Int)
+				}
+
+				addresses.Set(t.From, deltaFrom.Sub(deltaFrom, t.Value))
+
+				deltaTo, ok := addresses.Get(t.To)
+				if !ok {
+					deltaTo = new(big.Int)
+				}
+
+				addresses.Set(t.To, deltaTo.Add(deltaTo, t.Value))
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	t.log.Debug(
+		"processing done",
+		slog.Int("fetched wallets", len(addresses.Items())),
+	)
+
+	return biggestDeltaAddres(addresses.Items()), nil
+}
+
+const fetchWorkersPoolSize = 4
 
 func (t *ethInteractor) fetchBlocksTransactions(
 	ctx context.Context,
@@ -131,12 +124,10 @@ func (t *ethInteractor) fetchBlocksTransactions(
 	blockToFetch := new(big.Int).Set(headBlock)
 	endBlock := big.NewInt(0)
 
-	processPool := pond.New(runtime.GOMAXPROCS(0)*2, numBlocks)
-	fetchPool := pond.New(2, numBlocks)
-
-	blocksChan := make(chan *entities.Block, numBlocks/2)
+	blocksChan := make(chan *entities.Block, numBlocks)
 
 	var fetchWg sync.WaitGroup
+	fetchPool := pond.New(fetchWorkersPoolSize, numBlocks)
 
 	for i := 0; i < numBlocks; i++ {
 		blockNumber := entities.BlockNumber("0x" + blockToFetch.Text(16))
@@ -174,22 +165,51 @@ func (t *ethInteractor) fetchBlocksTransactions(
 		close(blocksChan)
 	}()
 
+	processPool := pond.New(defaultWorkersNum, numBlocks)
+
 	var processWg sync.WaitGroup
 
-	for b := range blocksChan {
-		processWg.Add(1)
-
-		processPool.Submit(func() {
-			defer processWg.Done()
-
-			for _, tx := range b.Transactions {
-				txChan <- tx
-			}
-		})
-	}
-
 	go func() {
+		dispatchBlockTransactions(&processWg, processPool, blocksChan, txChan)
+
 		processWg.Wait()
 		close(txChan)
 	}()
+}
+
+// Dispatches blocks from blocksChan into txsChan
+func dispatchBlockTransactions(
+	wg *sync.WaitGroup,
+	pool *pond.WorkerPool,
+	blocksChan <-chan *entities.Block,
+	txsChan chan<- *entities.Transaction,
+) {
+	for b := range blocksChan {
+		wg.Add(1)
+
+		pool.Submit(func() {
+			defer wg.Done()
+
+			for _, tx := range b.Transactions {
+				txsChan <- tx
+			}
+		})
+	}
+}
+
+// Returns an address of a wallet with balances mod|delta| is the highest
+func biggestDeltaAddres(set map[string]*big.Int) string {
+	// Build wallets array
+	wallets := make(entities.Wallets, 0, len(set))
+	for addr, dlt := range set {
+		wallets = append(wallets, &entities.Wallet{
+			Address: addr,
+			Delta:   dlt.Abs(dlt),
+		})
+	}
+
+	// Sort
+	wallets.Sort()
+
+	return wallets[len(wallets)-1].Address
 }

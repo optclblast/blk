@@ -44,20 +44,17 @@ func (c *walletsController) MostChangedWalletAddress(w http.ResponseWriter, r *h
 		}
 	}
 
-	c.log.Debug(
-		"most-changed-wallet-address request",
-		slog.Int("num blocks", 0),
-	)
-
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 
-	wallet, err := c.usecase.MostChangedAddress(ctx, numBlocks)
+	walletAddress, err := c.usecase.MostChangedAddress(ctx, numBlocks)
 	if err != nil {
 		return nil, fmt.Errorf("error fetch the most changed wallet. %w", err)
 	}
 
-	return wallet, nil
+	return MostChangedWalletAddressResponse{
+		Address: walletAddress,
+	}, nil
 }
 
 type walletsController struct {
