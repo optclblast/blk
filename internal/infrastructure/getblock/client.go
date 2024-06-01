@@ -9,13 +9,16 @@ import (
 	"github.com/ybbus/jsonrpc/v3"
 )
 
+// B ase getblock API url
 const baseURL = "https://go.getblock.io/"
 
+// JSON rpc client
 type Client struct {
 	log *slog.Logger
 	cc  jsonrpc.RPCClient
 }
 
+// NewClient returns a new GetBlock JSON rpc client
 func NewClient(
 	log *slog.Logger,
 	accessToken string,
@@ -26,6 +29,7 @@ func NewClient(
 	}
 }
 
+// LastBlockNumber returns a last block number
 func (c *Client) LastBlockNumber(ctx context.Context) (entities.BlockNumber, error) {
 	const method = "eth_blockNumber"
 
@@ -54,6 +58,7 @@ func (c *Client) LastBlockNumber(ctx context.Context) (entities.BlockNumber, err
 	return entities.BlockNumber(response), nil
 }
 
+// BlockInfoByNumber returns an info about block by its number
 func (c *Client) BlockInfoByNumber(ctx context.Context, num entities.BlockNumber) (*entities.Block, error) {
 	const method = "eth_getBlockByNumber"
 
@@ -65,7 +70,7 @@ func (c *Client) BlockInfoByNumber(ctx context.Context, num entities.BlockNumber
 
 		return nil, fmt.Errorf("error fetch block info. %w", err)
 	} else if res.Error != nil {
-		return nil, fmt.Errorf("error fetch block info. %w", err)
+		return nil, fmt.Errorf("error fetch block info. %w", res.Error)
 	}
 
 	out := new(entities.Block)

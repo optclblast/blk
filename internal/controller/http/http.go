@@ -10,6 +10,7 @@ import (
 	"github.com/optclblast/blk/internal/logger"
 )
 
+// router object
 type router struct {
 	*chi.Mux
 	log *slog.Logger
@@ -17,6 +18,7 @@ type router struct {
 	walletsController WalletsController
 }
 
+// NewRouter returns a new http.Handler object that can power your server
 func NewRouter(
 	log *slog.Logger,
 	walletsController WalletsController,
@@ -30,7 +32,10 @@ func NewRouter(
 	r.Use(middleware.Recoverer)
 	r.Use(handleMw)
 
-	r.Get("/most-changed", r.handle(r.walletsController.MostChangedWalletAddress, "most-changed"))
+	r.Get("/most-changed", r.handle(
+		r.walletsController.MostChangedWalletAddress,
+		"most-changed",
+	))
 
 	return r
 }
@@ -44,9 +49,11 @@ func handleMw(next http.Handler) http.Handler {
 	})
 }
 
-// handle is a helper functions that makes it easier to work woth http handlers
+type handleFunc func(w http.ResponseWriter, req *http.Request) (any, error)
+
+// handle is a helper functions that makes it easier to work with http handlers
 func (s *router) handle(
-	h func(w http.ResponseWriter, req *http.Request) (any, error),
+	h handleFunc,
 	method_name string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +96,10 @@ func (s *router) handle(
 	}
 }
 
-func (s *router) responseError(w http.ResponseWriter, e error) {
+func (s *router) responseError(
+	w http.ResponseWriter,
+	e error,
+) {
 	apiErr := mapError(e)
 
 	out, err := json.Marshal(apiErr)

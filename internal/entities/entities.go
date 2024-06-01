@@ -8,13 +8,17 @@ import (
 	"time"
 )
 
+// Wallet represents an on-chain wallet with address in hex format and
+// delta of its balance
 type Wallet struct {
 	Address string
 	Delta   *big.Int
 }
 
+// []*Wallet type alias
 type Wallets []*Wallet
 
+// Sort sorts wallets by delta
 func (w Wallets) Sort() {
 	sort.Slice(w, func(r, l int) bool {
 		if r := w[r].Delta.Cmp(w[l].Delta); r < 0 {
@@ -25,12 +29,15 @@ func (w Wallets) Sort() {
 	})
 }
 
+// BlockNumber is an alias for hex block number
 type BlockNumber string
 
+// ToInt converts string hex block number into its big.Int representation
 func (n BlockNumber) ToInt() (*big.Int, error) {
 	return hexToInt((string)(n))
 }
 
+// Block object
 type Block struct {
 	Difficulty       *big.Int       `json:"difficulty"`
 	BaseFeePerGas    *big.Int       `json:"baseFeePerGas"`
@@ -57,6 +64,7 @@ type Block struct {
 // helper alias for proper unmarshal of a block object
 type blockAlias Block
 
+// blockRaw is an intermediate object needed for unmarshalling
 type blockRaw struct {
 	*blockAlias
 	BaseFeePerGas   string `json:"baseFeePerGas"`
@@ -90,6 +98,7 @@ func (b *Block) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// Transaction object
 type Transaction struct {
 	BlockHash            string        `json:"blockHash"`
 	BlockNumber          *big.Int      `json:"blockNumber"`
@@ -115,6 +124,7 @@ type Transaction struct {
 // helper alias for proper unmarshal of a transaction object
 type transactionAlias Transaction
 
+// transactionRaw is an intermediate object needed for unmarshalling
 type transactionRaw struct {
 	*transactionAlias
 	BlockNumber          string `json:"blockNumber"`
@@ -154,6 +164,12 @@ func (t *Transaction) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// hexToIntMust is a shortcur for
+//
+//	i, err := hexToInt(s)
+//	if err != nil {
+//		panic(err)
+//	}
 func hexToIntMust(s string) *big.Int {
 	i, err := hexToInt(s)
 	if err != nil {
@@ -163,6 +179,7 @@ func hexToIntMust(s string) *big.Int {
 	return i
 }
 
+// hexToInt converts string hex value into a big.Int
 func hexToInt(s string) (*big.Int, error) {
 	bi := new(big.Int)
 

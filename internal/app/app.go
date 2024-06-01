@@ -21,11 +21,15 @@ const (
 	httpAddrEnv = "BLK_HTTP_ADDR"
 )
 
+// Init is a main function in our application lifecycle.
+// Init is responsible for bringing all the system's components together.
 func Init(ctx context.Context) error {
+	// Fetch env vars
 	getblockAccessToken := os.Getenv(getblockAccessTokenEnv)
 	logLevel := os.Getenv(logLevelEnv)
 	httpAddr := os.Getenv(httpAddrEnv)
 
+	// Build logger
 	log := logger.NewBuilder().
 		WithLevel(logger.MapLevel(logLevel)).
 		Build()
@@ -36,26 +40,31 @@ func Init(ctx context.Context) error {
 		slog.String("log level", logLevel),
 	)
 
+	// Initialize node provider client
 	getblockClient := getblock.NewClient(
 		log.WithGroup("getblock-client"),
 		getblockAccessToken,
 	)
 
+	// Initialize application layer
 	ethInteractor := usecase.NewEthInteractor(
 		log.WithGroup("eth-interactor"),
 		getblockClient,
 	)
 
+	// Initialize controller layer
 	walletsController := http.NewWalletsController(
 		log.WithGroup("wallets-controller"),
 		ethInteractor,
 	)
 
+	// Build a router
 	router := http.NewRouter(
 		log.WithGroup("router"),
 		walletsController,
 	)
 
+	// And run server with it
 	server := server.New(router, httpAddr)
 
 	select {

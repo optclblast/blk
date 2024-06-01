@@ -6,34 +6,32 @@ import (
 	"os"
 )
 
+// Builder object
 type LoggerBuilder struct {
-	addSource bool
-	lvl       slog.Level
-	writers   []io.Writer
+	lvl     slog.Level
+	writers []io.Writer
 }
 
+// NewBuilder return a new logger builder object
 func NewBuilder() *LoggerBuilder {
 	return new(LoggerBuilder)
 }
 
+// WithWriter sets a specific writer
 func (b *LoggerBuilder) WithWriter(w io.Writer) *LoggerBuilder {
 	b.writers = append(b.writers, w)
 
 	return b
 }
 
+// WithLevel sets log level
 func (b *LoggerBuilder) WithLevel(l slog.Level) *LoggerBuilder {
 	b.lvl = l
 
 	return b
 }
 
-func (b *LoggerBuilder) WithSource() *LoggerBuilder {
-	b.addSource = true
-
-	return b
-}
-
+// Build returns the logger
 func (b *LoggerBuilder) Build() *slog.Logger {
 	if len(b.writers) == 0 {
 		b.writers = append(b.writers, os.Stdout)
@@ -50,6 +48,7 @@ func newLogger(lvl slog.Level, w io.Writer) *slog.Logger {
 	)
 }
 
+// Error logging attribute
 func Err(err error) slog.Attr {
 	return slog.Attr{
 		Key:   "error",
@@ -57,6 +56,7 @@ func Err(err error) slog.Attr {
 	}
 }
 
+// Maps level from a string. By default returns slog.LevelInfo
 func MapLevel(lvl string) slog.Level {
 	switch lvl {
 	case "dev", "local", "debug":

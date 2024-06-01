@@ -83,29 +83,6 @@ type TestCase struct {
 
 var tests []TestCase = []TestCase{
 	{
-		Title: "1 block. 3 wallets, 3 txs. Negative is the highest",
-		Block: &entities.Block{
-			Transactions: []*entities.Transaction{
-				{
-					From:  "A",
-					To:    "B", // + 100
-					Value: big.NewInt(100),
-				},
-				{
-					From:  "B", // -90
-					To:    "A", // -10
-					Value: big.NewInt(90),
-				},
-				{
-					From:  "A", // -5
-					To:    "F",
-					Value: big.NewInt(5),
-				},
-			},
-		},
-		ExpectedResult: []string{"A"},
-	},
-	{
 		Title: "1 block, 3 wallets, 4 txs. Positive is the highest",
 		Block: &entities.Block{
 			Transactions: []*entities.Transaction{

@@ -13,6 +13,9 @@ import (
 )
 
 type WalletsController interface {
+	// MostChangedWalletAddress returns the address of the wallet whose balance
+	// delta was the highest among other wallets participating in transactions
+	// from numBlocks blocks to the HEAD block.
 	MostChangedWalletAddress(w http.ResponseWriter, r *http.Request) (any, error)
 }
 
@@ -21,7 +24,13 @@ const (
 	maxNumBlocks     = 150
 )
 
-func (c *walletsController) MostChangedWalletAddress(w http.ResponseWriter, r *http.Request) (any, error) {
+// MostChangedWalletAddress returns the address of the wallet whose balance
+// delta was the highest among other wallets participating in transactions
+// from numBlocks blocks to the HEAD block.
+func (c *walletsController) MostChangedWalletAddress(
+	w http.ResponseWriter,
+	r *http.Request,
+) (any, error) {
 	defer r.Body.Close()
 
 	var (
@@ -42,6 +51,10 @@ func (c *walletsController) MostChangedWalletAddress(w http.ResponseWriter, r *h
 		if numBlocks > maxNumBlocks {
 			numBlocks = maxNumBlocks
 		}
+
+		if numBlocks <= 0 {
+			numBlocks = defaultNumBlocks
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
@@ -57,11 +70,13 @@ func (c *walletsController) MostChangedWalletAddress(w http.ResponseWriter, r *h
 	}, nil
 }
 
+// walletsController interface implementation
 type walletsController struct {
 	log     *slog.Logger
 	usecase usecase.EthInteractor
 }
 
+// NewWalletsController return a new WalletsController instance
 func NewWalletsController(
 	log *slog.Logger,
 	usecase usecase.EthInteractor,

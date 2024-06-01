@@ -16,10 +16,6 @@ up:
 run.local: bin.build
 	${PROJECT_DIR}/build/blk
 
-.PHONY: start.d
-start.d:
-	sudo systemctl start docker
-
 .PHONY: test
 test:
 	sudo docker compose -f docker-compose.test.yaml up --build --abort-on-container-exit

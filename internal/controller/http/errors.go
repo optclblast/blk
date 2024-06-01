@@ -8,21 +8,28 @@ import (
 )
 
 var (
+	// ErrorBadQueryParams is thrown wheh query parameters are invalid
 	ErrorBadQueryParams = errors.New("bad query params")
 )
 
+// api error dto object
 type apiError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 
-func buildApiError(code int, message string) apiError {
+// buildApiError returns a new apiError instance built from error code and error message
+func buildApiError(
+	code int,
+	message string,
+) apiError {
 	return apiError{
 		Code:    code,
 		Message: message,
 	}
 }
 
+// mapError maps internal errors to its API representation
 func mapError(err error) apiError {
 	switch {
 	case errors.Is(err, ErrorBadQueryParams):

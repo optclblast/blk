@@ -2,3 +2,4 @@ build
 .env
 .vscode
 tools/golangci-lint
+tools
