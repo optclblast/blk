@@ -1,5 +1,5 @@
 # BLK
-Collector of addresses with the largest balance delta over the last N ETH blocks
+Fetches an address with the largest balance delta over the last N ETH blocks
 ## Build 
 ### Docker
 1. Install docker 
