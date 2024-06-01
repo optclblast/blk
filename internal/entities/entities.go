@@ -13,7 +13,7 @@ type Wallet struct {
 	Delta   *big.Int
 }
 
-type Wallets []Wallet
+type Wallets []*Wallet
 
 func (w Wallets) Sort() {
 	sort.Slice(w, func(r, l int) bool {

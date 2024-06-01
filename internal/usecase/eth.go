@@ -149,7 +149,7 @@ func biggestDeltaAddres(set map[string]*big.Int) string {
 	// Build wallets array
 	wallets := make(entities.Wallets, len(set))
 	for addr, dlt := range set {
-		wallets[i] = entities.Wallet{
+		wallets[i] = &entities.Wallet{
 			Address: addr,
 			Delta:   dlt.Abs(dlt),
 		}
