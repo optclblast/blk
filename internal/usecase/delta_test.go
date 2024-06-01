@@ -14,7 +14,7 @@ import (
 func TestAddressWithBiggestDelta(t *testing.T) {
 	ethInteractor := &ethInteractor{log: slog.Default()}
 
-	for _, tc := range testBlocks {
+	for _, tc := range tests {
 		t.Run(tc.Title, func(t *testing.T) {
 			txCh := make(chan *entities.Transaction, len(tc.Block.Transactions))
 
@@ -81,7 +81,7 @@ type TestCase struct {
 	ExpectedResult []string
 }
 
-var testBlocks []TestCase = []TestCase{
+var tests []TestCase = []TestCase{
 	{
 		Title: "1 block. 3 wallets, 3 txs. Negative is the highest",
 		Block: &entities.Block{
