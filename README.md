@@ -1,6 +1,5 @@
 # BLK
-ETH wallets balance delta fetcher  
-
+Collector of addresses with the largest balance delta over the last N ETH blocks
 ## Build 
 ### Docker
 1. Install docker 
