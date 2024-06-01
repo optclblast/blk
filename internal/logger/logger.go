@@ -7,7 +7,6 @@ import (
 )
 
 type LoggerBuilder struct {
-	local     bool
 	addSource bool
 	lvl       slog.Level
 	writers   []io.Writer
@@ -29,12 +28,6 @@ func (b *LoggerBuilder) WithLevel(l slog.Level) *LoggerBuilder {
 	return b
 }
 
-func (b *LoggerBuilder) Local() *LoggerBuilder {
-	b.local = true
-
-	return b
-}
-
 func (b *LoggerBuilder) WithSource() *LoggerBuilder {
 	b.addSource = true
 
@@ -47,19 +40,6 @@ func (b *LoggerBuilder) Build() *slog.Logger {
 	}
 
 	w := io.MultiWriter(b.writers...)
-
-	if b.local {
-		opts := PrettyHandlerOptions{
-			SlogOpts: &slog.HandlerOptions{
-				Level:     b.lvl,
-				AddSource: b.addSource,
-			},
-		}
-
-		handler := opts.NewPrettyHandler(w)
-
-		return slog.New(handler)
-	}
 
 	return newLogger(b.lvl, w)
 }

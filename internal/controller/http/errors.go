@@ -3,6 +3,8 @@ package http
 import (
 	"errors"
 	"net/http"
+
+	"github.com/optclblast/blk/internal/infrastructure/getblock"
 )
 
 var (
@@ -25,6 +27,11 @@ func mapError(err error) apiError {
 	switch {
 	case errors.Is(err, ErrorBadQueryParams):
 		return buildApiError(http.StatusBadRequest, "Invalid Query Params")
+	case errors.Is(err, getblock.ErrorRateLimitExceeded):
+		return buildApiError(
+			http.StatusTooManyRequests,
+			"GetBlock API rate limit exceeded! Type again later",
+		)
 	default:
 		return buildApiError(http.StatusInternalServerError, "Internal Server Error")
 	}

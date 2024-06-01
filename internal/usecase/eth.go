@@ -90,6 +90,7 @@ func (t *ethInteractor) addressWithBiggestDelta(
 		for i := 0; i < defaultWorkersNum; i++ {
 			// Run a writer worker
 			wg.Add(1)
+
 			go t.appendAddressDeltaWorker(&wg, &addresses, txChan)
 		}
 
@@ -173,6 +174,7 @@ func (t *ethInteractor) streamTransactions(
 	blocksChan := make(chan *entities.Block, numBlocks)
 
 	var fetchWg sync.WaitGroup
+
 	fetchPool := pond.New(fetchWorkersPoolSize, numBlocks)
 
 	for i := 0; i < numBlocks; i++ {

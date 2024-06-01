@@ -58,7 +58,7 @@ func (s *router) handle(
 				logger.Err(err),
 			)
 
-			responseError(w, err)
+			s.responseError(w, err)
 
 			return
 		}
@@ -72,7 +72,7 @@ func (s *router) handle(
 				slog.Any("object", resp),
 			)
 
-			responseError(w, err)
+			s.responseError(w, err)
 
 			return
 		}
@@ -89,7 +89,7 @@ func (s *router) handle(
 	}
 }
 
-func responseError(w http.ResponseWriter, e error) {
+func (s *router) responseError(w http.ResponseWriter, e error) {
 	apiErr := mapError(e)
 
 	out, err := json.Marshal(apiErr)
@@ -98,5 +98,8 @@ func responseError(w http.ResponseWriter, e error) {
 	}
 
 	w.WriteHeader(apiErr.Code)
-	w.Write(out)
+
+	if _, err := w.Write(out); err != nil {
+		s.log.Error("error write error to connection", logger.Err(err))
+	}
 }

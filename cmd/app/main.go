@@ -73,5 +73,4 @@ func main() {
 	if err := server.Shutdown(); err != nil {
 		panic(err)
 	}
-
 }

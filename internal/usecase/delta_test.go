@@ -17,7 +17,7 @@ type TestCase struct {
 
 var testBlocks []TestCase = []TestCase{
 	{
-		Title: "1 block. 3 wallets, 3 txs. Negative is the higest",
+		Title: "1 block. 3 wallets, 3 txs. Negative is the highest",
 		Block: &entities.Block{
 			Transactions: []*entities.Transaction{
 				{
@@ -40,7 +40,7 @@ var testBlocks []TestCase = []TestCase{
 		ExpectedResult: "A",
 	},
 	{
-		Title: "2 block, 3 wallets, 4 txs. Positive is the higest",
+		Title: "2 block, 3 wallets, 4 txs. Positive is the highest",
 		Block: &entities.Block{
 			Transactions: []*entities.Transaction{
 				{
