@@ -30,7 +30,6 @@ curl --request GET \
 Response:
 ```json
 {
-  "address": "0x3f0c3faeeeb9dad6ef6eb5fbab61039ff9067a07",
-  "delta": "-0x1832e1e9759a9da000"
+  "address": "0x3f0c3faeeeb9dad6ef6eb5fbab61039ff9067a07"
 }
 ```
