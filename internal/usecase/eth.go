@@ -192,13 +192,10 @@ func (t *ethInteractor) streamTransactions(
 	txChan chan<- *entities.Transaction,
 ) {
 	blockToFetch := new(big.Int).Set(headBlock)
-	endBlock := big.NewInt(0)
-
 	blocksChan := make(chan *entities.Block, numBlocks)
+	fetchPool := pond.New(fetchWorkersPoolSize, numBlocks)
 
 	var fetchWg sync.WaitGroup
-
-	fetchPool := pond.New(fetchWorkersPoolSize, numBlocks)
 
 	for i := 0; i < numBlocks; i++ {
 		blockNumber := entities.BlockNumber("0x" + blockToFetch.Text(16))
@@ -225,10 +222,6 @@ func (t *ethInteractor) streamTransactions(
 		})
 
 		blockToFetch.Sub(blockToFetch, big.NewInt(1))
-
-		if blockToFetch.Cmp(endBlock) == 0 {
-			break
-		}
 	}
 
 	go func() {
